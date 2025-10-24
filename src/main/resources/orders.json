@@ -3,5 +3,6 @@
   "spread": -1,
   "bidOrders": {},
   "stopAsks": [],
-  "stopBids": []
+  "stopBids": [],
+  "lastId": 0
 }

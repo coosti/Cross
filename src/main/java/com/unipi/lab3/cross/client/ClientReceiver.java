@@ -2,6 +2,7 @@ package com.unipi.lab3.cross.client;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.gson.Gson;
@@ -20,16 +21,19 @@ public class ClientReceiver implements Runnable {
 
     private final AtomicBoolean logged;
     private final AtomicBoolean registered;
-
+    private String SHUTDOWN_WARNING = "__SHUTDOWN__";
     private final AtomicBoolean serverClosed;
+
+    private LinkedBlockingQueue<String> userInput;
 
     private Gson gson = new Gson();
 
-    public ClientReceiver (BufferedReader in, AtomicBoolean logged, AtomicBoolean registered, AtomicBoolean serverClosed) {
+    public ClientReceiver (BufferedReader in, AtomicBoolean logged, AtomicBoolean registered, AtomicBoolean serverClosed,LinkedBlockingQueue<String> userInput) {
         this.in = in;
         this.logged = logged;
         this.registered = registered;
         this.serverClosed = serverClosed;
+        this.userInput = userInput;
     }
 
     public void run() {
@@ -67,6 +71,13 @@ public class ClientReceiver implements Runnable {
                     System.out.println("connection closed");
                     running = false;
                     serverClosed.set(true);
+
+                    try {
+                        userInput.put(SHUTDOWN_WARNING);
+                    } catch (Exception e) {
+                        System.out.println("Eccecion");
+                    }
+                    
                     break;
                 }
                 

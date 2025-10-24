@@ -1,1 +1,7 @@
-{}
+{
+  "pino": {
+    "username": "pino",
+    "passwordHash": "fb84a45f6df7d1d17036f939f1cfeb87339ff5dbdf411222f3762dd76779a287",
+    "isLogged": true
+  }
+}

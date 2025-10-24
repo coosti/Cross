@@ -1,17 +1,19 @@
 package com.unipi.lab3.cross.main;
 
 import com.unipi.lab3.cross.client.*;
-import com.unipi.lab3.cross.json.request.*;
-import com.unipi.lab3.cross.json.response.*;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientMain {
+
+
+    //coda per stdin
+    public static LinkedBlockingQueue<String> userCli = new LinkedBlockingQueue<String>();
 
     private static final String configFile = "src/main/resources/client.properties";
 
@@ -89,26 +91,45 @@ public class ClientMain {
         getProperties();
 
         try {
+            //creo il socket
             socket = new Socket(address, tcpPort);
             socket.setSoTimeout(1000);
-
+            //
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
-
+            //scanner per leggere da stdin
             scanner = new Scanner(System.in);
-
-            clientReceiver = new ClientReceiver(in, logged, registered, serverClosed);
-
+            //task da passare al thread di ricezione
+            clientReceiver = new ClientReceiver(in, logged, registered, serverClosed,userCli);
+            //thread di ricezione
             receiver = new Thread(clientReceiver);
             receiver.start();
-
+            //task ricezione udp
             udpListener = new UdpListener(0);
+            //thread ricezione udp
             listener = new Thread(udpListener);
-
-            clientSender = new ClientSender(out, scanner, active, logged, registered, udpListener, listener);
-
+            //task sender TCP
+            clientSender = new ClientSender(out, userCli, active, logged, registered, udpListener, listener);
+            //thread sender TCP
             sender = new Thread(clientSender);
             sender.start();
+            //server thread per leggere da stdin, quello diventa demone
+            Thread t = new Thread(() -> {
+                while(true){
+                    if(scanner.hasNext()){
+                        //bloccante
+                        String line = scanner.nextLine();
+                        try {
+                            userCli.put(line);
+                        } catch (InterruptedException e) {
+                            System.out.println("interrotto");
+                        }
+                    }
+                }
+            }   
+            );
+            t.setDaemon(true);
+            t.start();
 
             active.set(true);
 
@@ -154,31 +175,6 @@ public class ClientMain {
     public static void shutdown() {
         stopThreads();
         close();
-    
-
-        // try {
-        //     if (receiver != null)
-        //         receiver.join(1000);
-        // }
-        // catch (InterruptedException e) {
-        //     System.err.println("error waiting for receiver to close" + e.getMessage());
-        // }
-
-        // try {
-        //     if (sender != null)
-        //         sender.join(1000);
-        // }
-        // catch (InterruptedException e) {
-        //     System.err.println("error waiting for sender to close" + e.getMessage());
-        // }
-
-        // try {
-        //     if (listener != null)
-        //         listener.join(1000);
-        // }
-        // catch (InterruptedException e) {
-        //     System.err.println("error waiting for listener to close" + e.getMessage());
-        // }
     }
 
     public static void stopThreads() {
@@ -198,11 +194,11 @@ public class ClientMain {
         }
 
         try {
-            if(scanner != null) {
-                System.out.println("closing scanner");
-                clientSender.stop();
-                scanner.close();
-            }
+            // if(scanner != null) {
+            //     System.out.println("closing scanner");
+            //     clientSender.stop();
+            //     scanner.close();
+            // }
 
             if (sender != null && sender.isAlive()) {
                 System.out.println("stopping sender");
@@ -231,19 +227,8 @@ public class ClientMain {
         System.out.println("closing resources");
 
         try {
-            if (scanner != null) {
-                System.out.println("closing scanner");
-                scanner.nextLine(); // to unblock any waiting input
-                scanner.close();
-            }
-        }
-        catch (Exception e) {
-            System.err.println("error closing scanner: " + e.getMessage());
-        }
-
-        try {
             if (socket != null && !socket.isClosed()){
-                System.out.println("closing scanner");
+                System.out.println("closing socket");
                 socket.close();
             }
         }
