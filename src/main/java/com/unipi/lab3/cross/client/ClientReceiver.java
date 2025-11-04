@@ -2,6 +2,7 @@ package com.unipi.lab3.cross.client;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.gson.Gson;
@@ -16,6 +17,8 @@ public class ClientReceiver implements Runnable {
 
     private BufferedReader in;
 
+    private LinkedBlockingQueue<String> userInput;
+
     private volatile boolean running = false;
 
     private final AtomicBoolean logged;
@@ -23,13 +26,17 @@ public class ClientReceiver implements Runnable {
 
     private final AtomicBoolean serverClosed;
 
+    public static final String SHUTDOWN_MESSAGE = "__SHUTDOWN__";
+
     private Gson gson = new Gson();
 
-    public ClientReceiver (BufferedReader in, AtomicBoolean logged, AtomicBoolean registered, AtomicBoolean serverClosed) {
+    public ClientReceiver (BufferedReader in, AtomicBoolean logged, AtomicBoolean registered, AtomicBoolean serverClosed, LinkedBlockingQueue<String> userInput) {
         this.in = in;
         this.logged = logged;
         this.registered = registered;
         this.serverClosed = serverClosed;
+
+        this.userInput = userInput;
     }
 
     public void run() {
@@ -64,9 +71,18 @@ public class ClientReceiver implements Runnable {
                 }
 
                 if (responseMsg == null) {
-                    System.out.println("connection closed");
+                    //System.out.println("connection closed");
                     running = false;
                     serverClosed.set(true);
+                    //logged.set(false);
+
+                    try {
+                        userInput.put(SHUTDOWN_MESSAGE);
+                    }
+                    catch (Exception e) {
+                        System.err.println("exception: " + e.getMessage());
+                    }
+
                     break;
                 }
                 
@@ -193,7 +209,6 @@ public class ClientReceiver implements Runnable {
 
                 case "exit":
                     if (userResponse.getResponse() == 100) {
-                        System.out.println("disconnecting...");
                         serverClosed.set(true);
                         running = false;
                         System.exit(0);

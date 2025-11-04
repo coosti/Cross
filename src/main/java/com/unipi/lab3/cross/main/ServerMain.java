@@ -282,17 +282,29 @@ public class ServerMain {
 
     public static void shutdown() {
 
-        // save all data before closing
+        // logout all users
+        if (activeClients != null && !activeClients.isEmpty()) {
+            for (ClientHandler handler : activeClients.values()) {
+                try {
+                    handler.logoutUser();
+                } 
+                catch (Exception e) {
+                    System.err.println("error shutting down client: " + e.getMessage());
+                }
+            }
+        }
+
+        // save all data
         try {
             if (persistenceHandler != null) {
                 persistenceHandler.saveAll();
             }
-        } 
+        }
         catch (Exception e) {
             System.err.println("error while saving data: " + e.getMessage());
         }
 
-        // close all active client connections
+        // cleanup active clients
         if (activeClients != null && !activeClients.isEmpty()) {
             for (ClientHandler handler : activeClients.values()) {
                 try {

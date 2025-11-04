@@ -1,14 +1,11 @@
 package com.unipi.lab3.cross.main;
 
 import com.unipi.lab3.cross.client.*;
-import com.unipi.lab3.cross.json.request.*;
-import com.unipi.lab3.cross.json.response.*;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientMain {
@@ -23,6 +20,8 @@ public class ClientMain {
     private static BufferedReader in;
     private static PrintWriter out;
     private static Scanner scanner;
+
+    public static LinkedBlockingQueue<String> userInput = new LinkedBlockingQueue<String>();
 
     private static Thread receiver;
     private static ClientReceiver clientReceiver;
@@ -39,6 +38,8 @@ public class ClientMain {
     private static final AtomicBoolean logged = new AtomicBoolean(false);
 
     private static final AtomicBoolean serverClosed = new AtomicBoolean(false);
+
+    private static final AtomicBoolean shutdown = new AtomicBoolean(false);
 
     private static final String BANNER =
         "\n" +
@@ -72,7 +73,7 @@ public class ClientMain {
         printWelcome();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (active.get()) {
+            if (active.get() && shutdown.compareAndSet(false, true)) {
 
                 active.set(false);;
 
@@ -80,9 +81,14 @@ public class ClientMain {
                     logged.set(false);
                 }
 
-                System.out.println("client shutting down");
-
-                shutdown();
+                //System.out.println("client shutting down");
+                try {
+                    shutdown();
+                }
+                catch (Exception e) {
+                    System.err.println("error during shutdown: " + e.getMessage());
+                }
+                
             }
         }));
 
@@ -97,7 +103,7 @@ public class ClientMain {
 
             scanner = new Scanner(System.in);
 
-            clientReceiver = new ClientReceiver(in, logged, registered, serverClosed);
+            clientReceiver = new ClientReceiver(in, logged, registered, serverClosed, userInput);
 
             receiver = new Thread(clientReceiver);
             receiver.start();
@@ -105,42 +111,55 @@ public class ClientMain {
             udpListener = new UdpListener(0);
             listener = new Thread(udpListener);
 
-            clientSender = new ClientSender(out, scanner, active, logged, registered, udpListener, listener);
+            clientSender = new ClientSender(out, userInput, active, logged, registered, udpListener, listener);
 
             sender = new Thread(clientSender);
             sender.start();
 
+            Thread t = new Thread(() -> {
+                while (true) {
+                    if (scanner.hasNext()) {
+
+                        String input = scanner.nextLine();
+
+                        try {
+                            userInput.put(input);
+                        } 
+                        catch (InterruptedException e) {
+                            System.err.println("error adding user input to queue: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            );
+
+            t.setDaemon(true);
+            t.start();
+
             active.set(true);
 
-            while (active.get() && !serverClosed.get()) {
+            while (active.get()) {
                 try  {
-
-                    if (!active.get()) {
-                        System.out.println("closing...");
-                        break;
-                    }
 
                     if (serverClosed.get()) {
                         System.out.println("connection closed by server");
                         active.set(false);
                         
-                        if (logged.get()) {
+                        if (logged.get())
                             logged.set(false);
-                        }
 
-                    }
-                    
+                        break;
+                    } 
                 }
                 catch (Exception e) {
                     System.err.println("error: " + e.getMessage());
                 }
-                
             }
 
-            if (logged.get()) {
-                logged.set(false);
-            }
-            shutdown();
+            // check shutdown flag to avoid double shutdown
+            if (shutdown.compareAndSet(false, true))
+                shutdown();
+
             System.exit(0);
         }
         catch (IOException e) {
@@ -154,31 +173,6 @@ public class ClientMain {
     public static void shutdown() {
         stopThreads();
         close();
-    
-
-        // try {
-        //     if (receiver != null)
-        //         receiver.join(1000);
-        // }
-        // catch (InterruptedException e) {
-        //     System.err.println("error waiting for receiver to close" + e.getMessage());
-        // }
-
-        // try {
-        //     if (sender != null)
-        //         sender.join(1000);
-        // }
-        // catch (InterruptedException e) {
-        //     System.err.println("error waiting for sender to close" + e.getMessage());
-        // }
-
-        // try {
-        //     if (listener != null)
-        //         listener.join(1000);
-        // }
-        // catch (InterruptedException e) {
-        //     System.err.println("error waiting for listener to close" + e.getMessage());
-        // }
     }
 
     public static void stopThreads() {
@@ -198,11 +192,11 @@ public class ClientMain {
         }
 
         try {
-            if(scanner != null) {
+            /*if(scanner != null) {
                 System.out.println("closing scanner");
                 clientSender.stop();
                 scanner.close();
-            }
+            }*/
 
             if (sender != null && sender.isAlive()) {
                 System.out.println("stopping sender");
@@ -231,19 +225,8 @@ public class ClientMain {
         System.out.println("closing resources");
 
         try {
-            if (scanner != null) {
-                System.out.println("closing scanner");
-                scanner.nextLine(); // to unblock any waiting input
-                scanner.close();
-            }
-        }
-        catch (Exception e) {
-            System.err.println("error closing scanner: " + e.getMessage());
-        }
-
-        try {
             if (socket != null && !socket.isClosed()){
-                System.out.println("closing scanner");
+                System.out.println("closing socket");
                 socket.close();
             }
         }
@@ -253,7 +236,7 @@ public class ClientMain {
 
         try {
             if (in != null){
-                System.out.println("closing scanner");
+                System.out.println("closing input stream");
                 in.close();
             }
         } 
@@ -263,7 +246,7 @@ public class ClientMain {
         
         try {
             if (out != null){
-                System.out.println("closing scanner");
+                System.out.println("closing output stream");
                 out.close();
             }
 

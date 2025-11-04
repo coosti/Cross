@@ -11,6 +11,8 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <maven.color>false</maven.color>
+        <jansi.force>false</jansi.force>
     </properties>
 
     <build>

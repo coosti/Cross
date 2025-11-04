@@ -73,6 +73,10 @@ public class Trade {
                         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
+    public String getUsername () {
+        return this.username;
+    }
+
     public void setSize (int size) {
         this.size = size;
     }

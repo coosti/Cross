@@ -1,12 +1,11 @@
 package com.unipi.lab3.cross.client;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Scanner;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.gson.Gson;
@@ -22,7 +21,8 @@ import com.unipi.lab3.cross.json.response.OrderResponse;
 public class ClientSender implements Runnable {
     
     private PrintWriter out;
-    private Scanner scanner;
+
+    private LinkedBlockingQueue<String> scanner;
 
     private volatile boolean running = false;
 
@@ -31,12 +31,14 @@ public class ClientSender implements Runnable {
     private final AtomicBoolean logged;
     private final AtomicBoolean registered;
 
+    private String SHUTDOWN_MESSAGE = "__SHUTDOWN__";
+
     private Thread listener;
     private UdpListener udpListener;
 
     private static final Gson gson = new GsonBuilder().create();
 
-    public ClientSender(PrintWriter out, Scanner scanner, AtomicBoolean active, AtomicBoolean logged, AtomicBoolean registered, UdpListener udpListener, Thread listener) {
+    public ClientSender(PrintWriter out, LinkedBlockingQueue<String> scanner, AtomicBoolean active, AtomicBoolean logged, AtomicBoolean registered, UdpListener udpListener, Thread listener) {
         this.out = out;
         this.scanner = scanner;
         
@@ -55,11 +57,13 @@ public class ClientSender implements Runnable {
             while (running && !Thread.currentThread().isInterrupted()) {
 
                 try {
-                    if (!scanner.hasNextLine()) {
-                        break;
-                    }
+                    
+                    String userInput = scanner.take();
 
-                    String userInput = scanner.nextLine();
+                    if (userInput.equals(SHUTDOWN_MESSAGE)) {
+                        //System.out.println("closing");
+                        return;
+                    }
 
                     if (userInput.isEmpty() || userInput.isBlank() || !isValid(userInput)) {
                         // command not valid
@@ -458,12 +462,5 @@ public class ClientSender implements Runnable {
 
     public void stop() {
         running = false;
-
-        try {
-            if (scanner != null) {
-                scanner.close();
-            }
-        }
-        catch (Exception e) {}
     }
 }

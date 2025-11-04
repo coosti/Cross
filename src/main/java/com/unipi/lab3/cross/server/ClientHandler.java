@@ -101,7 +101,8 @@ public class ClientHandler implements Runnable {
                     }
 
                 }
-                out.println(gson.toJson((new UserResponse("exit", 100, "exited successfully"))));
+                if (!clientSocket.isClosed())
+                    out.println(gson.toJson((new UserResponse("exit", 100, "exited successfully"))));
         } 
         catch (IOException e) {
             System.err.println("socket error: " + e.getMessage());
@@ -460,11 +461,6 @@ public class ClientHandler implements Runnable {
 
     public void stop() {
         running = false;
-
-        if (this.user != null && this.user.getLogged()) {
-            logoutUser();
-            System.out.println("user logged out");
-        }
 
         ServerMain.removeActiveClient(clientSocket);
 
