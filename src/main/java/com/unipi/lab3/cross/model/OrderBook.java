@@ -739,13 +739,13 @@ public class OrderBook {
     }
 
     public synchronized void printOrderBook () {
-        System.out.println("\n-------------------------------------------------------");
-        System.out.println("                  ORDER BOOK");
-        System.out.println("-------------------------------------------------------");
+        System.out.println("\n=======================================================");
+        System.out.println("                     ORDER BOOK                        ");
+        System.out.println("=======================================================\n");
             
         if (this.askOrders.isEmpty() && this.bidOrders.isEmpty() && this.stopAsks.isEmpty() && this.stopBids.isEmpty()) {
-            System.out.println("Empty Order Book!");
-            System.out.println("-------------------------------------------------------\n");
+            System.out.println("                   Empty order book!                   ");
+            System.out.println("=======================================================\n");
             return;
         }
 
@@ -754,20 +754,21 @@ public class OrderBook {
         }
         else {
             System.out.println("ASKS:");
-            System.out.printf("%-12s %-15s %-15s%n", "Price (USD)", "Size (BTC)", "Total");
+            System.out.printf("%-15s %-15s %-15s%n", "Price (USD)", "Size (BTC)", "Total");
+            System.out.println("-------------------------------------------------------");
             for (ConcurrentSkipListMap.Entry<Integer, OrderGroup> entry : this.askOrders.entrySet()) {
                 int price = entry.getKey();
                 OrderGroup orderGroup = entry.getValue();
                 
-                System.out.printf("%10d %10d %10d%n", price/1000, orderGroup.getSize()/1000, orderGroup.getTotal()/1000000);
+                System.out.printf("%-15d %-15d %-15d%n", price, orderGroup.getSize(), orderGroup.getTotal());
             }
         }
             
         System.out.println("-------------------------------------------------------");
         if (this.spread >= 0)
-            System.out.println("SPREAD: " + this.spread);
+            System.out.printf("%-10s %s%n", "SPREAD: ", + this.spread);
         else
-            System.out.println("");
+            System.out.println("invalid spread");
 
         System.out.println("-------------------------------------------------------");
 
@@ -776,13 +777,13 @@ public class OrderBook {
         }
         else {
             System.out.println("BIDS:");
-            System.out.printf("%-12s %-15s %-15s%n", "Price (USD)", "Size (BTC)", "Total");
+            System.out.printf("%-15s %-15s %-15s%n", "Price (USD)", "Size (BTC)", "Total");
             System.out.println("-------------------------------------------------------");
             for (ConcurrentSkipListMap.Entry<Integer, OrderGroup> entry : this.bidOrders.entrySet()) {
                 int price = entry.getKey();
                 OrderGroup orderGroup = entry.getValue();
                 
-                System.out.printf("%10d %10d %10d%n", price/1000, orderGroup.getSize()/1000, orderGroup.getTotal()/1000000);
+                System.out.printf("%-15d %-15d %-15d%n", price, orderGroup.getSize(), orderGroup.getTotal());
             }
         }
         
@@ -802,10 +803,10 @@ public class OrderBook {
         }
         else {
             System.out.println("STOP ASKS:");
-            System.out.printf("%-12s %-15s%n", "Price (USD)", "Size (BTC)");
+            System.out.printf("%-15s %-15s%n", "Price (USD)", "Size (BTC)");
             System.out.println("-------------------------------------------------------");
             for (StopOrder order : this.stopAsks) {
-                System.out.printf("%10d %10d%n", order.getStopPrice()/1000, order.getSize()/1000);
+                System.out.printf("%-15d %-15d%n", order.getStopPrice(), order.getSize());
             }
         }
 
@@ -814,10 +815,10 @@ public class OrderBook {
         }
         else {
             System.out.println("STOP BIDS:");
-            System.out.printf("%-12s %-15s%n", "Price (USD)", "Size (BTC)");
+            System.out.printf("%-15s %-15s%n", "Price (USD)", "Size (BTC)");
             System.out.println("-------------------------------------------------------");
             for (StopOrder order : this.stopBids) {
-                System.out.printf("%10d %10d%n", order.getStopPrice()/1000, order.getSize()/1000);
+                System.out.printf("%-15d %-15d%n", order.getStopPrice(), order.getSize());
             }
         }
 
