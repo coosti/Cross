@@ -56,6 +56,14 @@ public class ClientReceiver implements Runnable {
                 catch (SocketException e) {
                     if (running) {
                         System.err.println("socket error: " + e.getMessage());
+
+                        try {
+                            userInput.put(SHUTDOWN_MESSAGE);
+                        }
+                        catch (InterruptedException exc) {
+                            System.err.println("exception: " + exc.getMessage());
+                        }
+
                         serverClosed.set(true);
                         running = false;
                     }
@@ -63,7 +71,15 @@ public class ClientReceiver implements Runnable {
                 }
                 catch (IOException e) {
                     if (running) {
-                        System.err.println("receiver stopped: " + e.getMessage());
+                        System.err.println("connection stopped: " + e.getMessage());
+
+                        try {
+                            userInput.put(SHUTDOWN_MESSAGE);
+                        }
+                        catch (InterruptedException exc) {
+                            System.err.println("exception: " + exc.getMessage());
+                        }
+
                         serverClosed.set(true);
                         running = false;
                     }
@@ -72,9 +88,6 @@ public class ClientReceiver implements Runnable {
 
                 if (responseMsg == null) {
                     //System.out.println("connection closed");
-                    running = false;
-                    serverClosed.set(true);
-                    //logged.set(false);
 
                     try {
                         userInput.put(SHUTDOWN_MESSAGE);
@@ -82,6 +95,10 @@ public class ClientReceiver implements Runnable {
                     catch (Exception e) {
                         System.err.println("exception: " + e.getMessage());
                     }
+
+                    running = false;
+                    serverClosed.set(true);
+                    //logged.set(false);
 
                     break;
                 }
@@ -207,16 +224,24 @@ public class ClientReceiver implements Runnable {
                     }
                 break;
 
-                case "exit":
+                /*case "exit":
                     if (userResponse.getResponse() == 100) {
+
+                        try {
+                            userInput.put(SHUTDOWN_MESSAGE);
+                        }
+                        catch (InterruptedException e) {
+                            System.err.println("exception: " + e.getMessage());
+                        }
+
                         serverClosed.set(true);
                         running = false;
-                        System.exit(0);
+                        //System.exit(0);
                     }
                     else {
                         System.out.println(userResponse.getErrorMessage());
                     }
-                break;
+                break;*/
 
                 default:
                     System.out.println(userResponse.getErrorMessage());

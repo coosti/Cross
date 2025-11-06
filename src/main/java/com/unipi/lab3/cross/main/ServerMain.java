@@ -282,6 +282,16 @@ public class ServerMain {
 
     public static void shutdown() {
 
+        // close server socket to stop accepting new connections
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } 
+        catch (IOException e) {
+            System.err.println("error closing server socket: " + e.getMessage());
+        }
+
         // logout all users
         if (activeClients != null && !activeClients.isEmpty()) {
             for (ClientHandler handler : activeClients.values()) {
@@ -349,16 +359,6 @@ public class ServerMain {
         } 
         catch (InterruptedException e) {
             pool.shutdownNow();
-        }
-
-        // close server socket
-        try {
-            if (serverSocket != null && !serverSocket.isClosed()) {
-                serverSocket.close();
-            }
-        } 
-        catch (IOException e) {
-            System.err.println("error closing server socket: " + e.getMessage());
         }
 
         // close UDP notifier

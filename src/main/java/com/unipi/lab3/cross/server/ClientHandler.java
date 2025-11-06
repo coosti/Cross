@@ -83,12 +83,12 @@ public class ClientHandler implements Runnable {
                             // send response to client
                             out.println(jsonString);
 
-                            if (response instanceof UserResponse) {
+                            /*if (response instanceof UserResponse) {
                                 if (((UserResponse)response).getOperation().equals("exit")) {
                                     stop();
                                     break;
                                 }
-                            }
+                            }*/
                         }  
                     }
                     catch (JsonSyntaxException e) {
@@ -101,9 +101,7 @@ public class ClientHandler implements Runnable {
                     }
 
                 }
-                if (!clientSocket.isClosed())
-                    out.println(gson.toJson((new UserResponse("exit", 100, "exited successfully"))));
-        } 
+        }
         catch (IOException e) {
             System.err.println("socket error: " + e.getMessage());
         }
@@ -458,7 +456,7 @@ public class ClientHandler implements Runnable {
             }
         }
     }
-
+ 
     public void stop() {
         running = false;
 
