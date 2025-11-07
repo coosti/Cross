@@ -2,6 +2,11 @@ package com.unipi.lab3.cross.model.trade;
 
 import java.time.LocalDate;
 
+/**
+ * class that holds price stats for trades of a specific day,
+ * as opening, closing, maximum, and minimum prices
+*/
+
 public class DailyTradingStats {
     private LocalDate date;
     private int openPrice;

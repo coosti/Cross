@@ -15,6 +15,11 @@ import com.unipi.lab3.cross.model.trade.*;
 import com.unipi.lab3.cross.server.UdpNotifier;
 import com.unipi.lab3.cross.json.response.Notification;
 
+/**
+    class representing the order book
+    containing map for limit orders and queues for stop orders
+*/
+
 public class OrderBook {
 
     // map price - list ask limit orders
@@ -27,22 +32,28 @@ public class OrderBook {
     // descending order for keys
     private ConcurrentSkipListMap<Integer, OrderGroup> bidOrders;
 
-    // stop orders
+    // stop orders queues
     private ConcurrentLinkedQueue<StopOrder> stopAsks;
     private ConcurrentLinkedQueue<StopOrder> stopBids;
 
+    // best prices -> not included in json file
     private transient int bestAskPrice;
     private transient int bestBidPrice;
 
+    // counter for unique order ids
     private transient static final AtomicInteger idCounter = new AtomicInteger(0);
     private int lastId = 0;
 
+    // map date - list of trades executed on that date
     private transient TradeMap tradeMap;
     private transient LinkedList<Trade> bufferedTrades;
 
     private transient UdpNotifier udpNotifier;
 
+    // flag to avoid recursive calls when updating best prices
     private transient boolean update = false;
+
+    // constructors
 
     public OrderBook () {
         this.askOrders = new ConcurrentSkipListMap<>();
@@ -53,7 +64,8 @@ public class OrderBook {
         this.stopAsks = new ConcurrentLinkedQueue<>();
         this.stopBids = new ConcurrentLinkedQueue<>();
 
-        // trade map & trades
+        this.tradeMap = new TradeMap();
+        this.bufferedTrades = new LinkedList<>();
 
         this.udpNotifier = null;
     }
@@ -76,8 +88,10 @@ public class OrderBook {
         return this.askOrders;
     }
 
+    // setter for ask orders map
     public void setAskOrders (ConcurrentSkipListMap<Integer, OrderGroup> askOrders) {
         this.askOrders = askOrders;
+        // update prices after setting the map
         updateBestPrices();
     }
 
@@ -85,6 +99,7 @@ public class OrderBook {
         return this.bidOrders;
     }
 
+    // setter for bid orders map
     public void setBidOrders (ConcurrentSkipListMap<Integer, OrderGroup> bidOrders) {
         this.bidOrders = bidOrders;
         updateBestPrices();
@@ -130,6 +145,7 @@ public class OrderBook {
         this.lastId = lastId;
     }
 
+    // generate unique order id using an incremental counter
     public int counterOrderId () {
         int newId = idCounter.getAndIncrement();
         // update last used id
@@ -137,12 +153,14 @@ public class OrderBook {
         return newId;
     }
 
+    // restore id counter after loading order book from json
     public void restoreId () {
         if (this.lastId >= idCounter.get()) {
             idCounter.set(this.lastId + 1);
         }
     }
  
+    // getter for total size of asks
     public int getAsksSize () {
         int totalSize = 0;
 
@@ -153,6 +171,7 @@ public class OrderBook {
         return totalSize;
     }
 
+    // getter for total size of bids
     public int getBidsSize () {
         int totalSize = 0;
 
@@ -163,11 +182,19 @@ public class OrderBook {
         return totalSize;
     }
 
+    /**
+     * getter for total size of all orders of the given type for a specific user
+     * 
+     * @param username username of the user
+     * @param type type of orders to consider ("ask" or "bid")
+    */
     public int getAvailableSize (String username, String type) {
         int availableSize = 0;
 
+        // select the correct map
         ConcurrentSkipListMap<Integer, OrderGroup> selectedMap = type.equals("ask") ? this.askOrders : this.bidOrders;
 
+        // for every order group, pick and sum the size of all user's orders in it
         for (OrderGroup group : selectedMap.values()) {
             availableSize += group.getFilteredSize(username);
         }
@@ -175,18 +202,26 @@ public class OrderBook {
         return availableSize;
     }
  
+    /**
+     * updates the best ask and bid prices in the order book
+     * recalculates the spread
+     * 
+     * triggers stop order execution if the book state has changed,
+     * while preventing recursive updates.
+    */
     private synchronized void updateBestPrices () {       
-        // update best prices only if the maps aren't empty
+        // update best prices only if maps aren't empty
         this.bestAskPrice = this.askOrders.isEmpty() ? 0 : this.askOrders.firstKey();
         this.bestBidPrice = this.bidOrders.isEmpty() ? 0 : this.bidOrders.firstKey();
 
-        // both best prices must be valid to have spread
+        // both best prices must be valid to calculate spread
         if (this.bestAskPrice > 0 && this.bestBidPrice > 0) {
             if (this.bestAskPrice < this.bestBidPrice) {
-                // negative spread
+                // invalid spread
                 this.spread = -1;
             }
             else {
+                // valid spread -> difference between best ask price and best bid price
                 this.spread = this.bestAskPrice - this.bestBidPrice;
             }
         } 
@@ -194,8 +229,8 @@ public class OrderBook {
             // if one of the prices is 0, spread is invalid
             this.spread = -1;
         }
-
-        // execute stop orders if the map changed, avoiding recursion
+        
+        // update stop orders
         if (!update) {
             update = true;
             try {
@@ -207,15 +242,23 @@ public class OrderBook {
         }
     }
 
+    /**
+     * retrieves all stop orders placed by a specific user
+     * 
+     * @param username username of the user whose stop orders should be retrieved
+     * @return a queue with all stop orders of the given user
+     */ 
     public synchronized ConcurrentLinkedQueue<StopOrder> getUserStopOrders (String username) {
         ConcurrentLinkedQueue<StopOrder> userStopOrders = new ConcurrentLinkedQueue<>();
 
+        // retrieve all ask stop orders of the user from ask queue
         for (StopOrder order : this.stopAsks) {
             if (order.getUsername().equals(username)) {
                 userStopOrders.add(order);
             }
         }
 
+        // retrieve all bid stop orders of the user from bid queue
         for (StopOrder order : this.stopBids) {
             if (order.getUsername().equals(username)) {
                 userStopOrders.add(order);
@@ -237,7 +280,16 @@ public class OrderBook {
         this.udpNotifier = notifier;
     }
 
-    // methods for execute a limit order
+    /**
+     * calls the method to execute a limit order
+     * based on its type (ask or bid)
+     * 
+     * @param username username of the user placing the order
+     * @param type type of the limit order placed
+     * @param size size of the limit order
+     * @param price price of the limit order
+     * @return the unique order ID assigned to the limit order
+     */
     public synchronized int execLimitOrder (String username, String type, int size, int price) {
 
         // check the type of the order
@@ -251,18 +303,24 @@ public class OrderBook {
         return -1;
     }
 
-    // ask order
+    /**
+     * executes a new ask (sell) order, trying to match it with existing bid orders
+     * 
+     * @param username username of the user placing the order
+     * @param size size of the ask order
+     * @param price price of the ask order
+     * @return the order ID assigned to the ask order
+    */
     public synchronized int execAskOrder (String username, int size, int price) {
 
-        // create new order id
-        int orderId = counterOrderId(); // generate unique order id
+        // generate a new unique order id
+        int orderId = counterOrderId();
 
         int newSize = size;
 
-        // try to match with existing bid orders
+        // iterator for bid orders map
         Iterator<Map.Entry<Integer, OrderGroup>> iterator = this.bidOrders.entrySet().iterator();
 
-        // iterate on bid list
         while (iterator.hasNext() && newSize > 0) {
             Map.Entry<Integer, OrderGroup> entry = iterator.next();
 
@@ -272,30 +330,33 @@ public class OrderBook {
             ConcurrentLinkedQueue<LimitOrder> bidLimitOrders = bidGroup.getLimitOrders();
 
             // check price condition
+            // matching occurs when a bid price is greater than or equal to the ask price
             if (bidPrice >= price) {
+                // execute matching algorithm
                 newSize = matchingAlgorithm(bidGroup, bidLimitOrders, newSize, username);
 
+                // remove empty bid group after execution
                 if (bidGroup.isEmpty()) {
-                    // remove the group if it's empty
                     iterator.remove();
                 }
 
             }
         }
 
+        // order fully executed
         if (newSize == 0) {
             updateBestPrices();
 
-            // when fully executed, add to trade map
+            // add the ask order to trade map
             insertTrade(orderId, "ask", "limit", size, price, LocalDate.now(), username);
 
             System.out.println("order " + orderId + " fully executed");
 
-            // order fully executed
+            // return order id
             return orderId;
         }
+        // order partially executed or not matched
         else if (newSize > 0) {
-            // order not matched or partially executed
             // add the ask order to the order book
 
             if (newSize == size) {
@@ -306,33 +367,41 @@ public class OrderBook {
                 // order partially executed
                 System.out.println("order " + orderId + " partially executed");
             }
+            // add remaining size as ask limit order to the order book
             addLimitOrder(orderId, username, "ask", newSize, price);
         }
 
         return orderId;
     }
 
-    // bid order
+    /**
+     * executes a new bid (buy) order, trying to match it with existing ask orders
+     * 
+     * @param username username of the user placing the order
+     * @param size size of the bid order
+     * @param price price of the bid order
+     * @return the order ID assigned to the bid order
+     */
     public synchronized int execBidOrder (String username, int size, int price) {
-        // create new order id
-        int orderId = counterOrderId(); // generate unique order id
+        // generate a new unique order id
+        int orderId = counterOrderId();
 
+        // keep the remaining size of the order after matching
         int newSize = size;
 
-        // try to match with existing bid orders
-
+        // iterator for ask orders map
         Iterator<Map.Entry<Integer, OrderGroup>> iterator = this.askOrders.entrySet().iterator();
 
-        // iterate on bid list
         while (iterator.hasNext() && newSize > 0) {
             Map.Entry<Integer, OrderGroup> entry = iterator.next();
 
-            // check price condition
             int askPrice = entry.getKey();
             OrderGroup askGroup = entry.getValue();
 
             ConcurrentLinkedQueue<LimitOrder> askLimitOrders = askGroup.getLimitOrders();
 
+            // check price condition
+            // matching occurs when a bid price is greater than or equal to the ask price
             if (askPrice <= price) {
                 
                 newSize = matchingAlgorithm(askGroup, askLimitOrders, newSize, username);
@@ -343,19 +412,19 @@ public class OrderBook {
             }
         }
 
+        // order fully executed
         if (newSize == 0) {
             updateBestPrices();
 
-            // when fully executed, add to trade map
+            // add to trade map
             insertTrade(orderId, "bid", "limit", size, price, LocalDate.now(), username);
 
             System.out.println("order " + orderId + " fully executed");
 
-            // order fully executed
             return orderId;
         }
+        // order not matched or partially executed
         else if (newSize > 0) {
-            // order not matched or partially executed
             // add the ask order to the order book
 
             if (newSize == size) {
@@ -367,12 +436,26 @@ public class OrderBook {
                 System.out.println("order " + orderId + " partially executed");
             }
 
+            // add remaining size as bid limit order to the order book
             addLimitOrder(orderId, username, "bid", newSize, price);
         }
 
         return orderId;
     }
 
+    /**
+     * matching algorithm used to execute the order against an order group
+     * iterates through existing limit orders in a group and executes them
+     * against the incoming order until it is fully or partially filled
+     * 
+     * the algorithm is used for limit, stop and market orders
+     * 
+     * @param group price group of orders to check
+     * @param orders orders queue of the group
+     * @param size size of the placed order
+     * @param username username of the user placing the order
+     * @return remaining size of the placed order after matching
+     */
     public synchronized int matchingAlgorithm (OrderGroup group, ConcurrentLinkedQueue<LimitOrder> orders, int size, String username) {
 
         // check in the order group
@@ -382,6 +465,7 @@ public class OrderBook {
             // check for every order in the list
             LimitOrder order = iterator.next();
 
+            // avoid orders placed by the user to avoid self trading
             if (!order.getUsername().equals(username)) {
                 int orderSize = order.getSize();
                 int orderPrice = order.getLimitPrice();
@@ -390,15 +474,15 @@ public class OrderBook {
                     // order partially executed but opposite order executed
                     size -= orderSize;
 
-                    // add the opposite order to the trade map
+                    // add the executed order to the trade map
                     insertTrade(order.getOrderId(), order.getType(), "limit", orderSize, orderPrice, LocalDate.now(), order.getUsername());
 
                     System.out.println("order " + order.getOrderId() + " fully executed");
 
-                    // remove the opposite order from the group
+                    // remove the executed order from the group
                     iterator.remove();
                             
-                    // update the group size e total
+                    // update group parameters
                     group.updateGroup(orderSize, orderPrice);
                 }
                 else if (orderSize == size) {
@@ -411,73 +495,94 @@ public class OrderBook {
 
                     // remove the opposite order from the group
                     iterator.remove();
+
                     group.updateGroup(orderSize, orderPrice);
 
+                    // current order fully executed
                     return 0;
                 }
                 else if (orderSize > size) {
                     // opposite order partially executed
                     order.setSize(orderSize - size);
                     
+                    // update group
                     group.updateGroup(size, orderPrice);
 
                     System.out.println("order " + order.getOrderId() + " partially executed");
 
-                    // order fully executed
+                    // current order fully executed
                     return 0;
                 }
             }
         }
 
+        // current order partially executed -> return remaining size
         return size;
     }
 
-    // method to add a limit order
+    /**
+     * adds new limit order to the order book
+     * 
+     * @param orderId id of the limit order
+     * @param username username of the user that placed the order
+     * @param type type of the limit order ("ask" or "bid")
+     * @param size size of the limit order
+     * @param price price of the limit order
+     */
     public synchronized void addLimitOrder (int orderId, String username, String type, int size, int price) {
-        // create a new LimitOrder object
+        // create a new limit order instance
         LimitOrder order = new LimitOrder(orderId, username, type, size, price);
 
         // select the right map
         ConcurrentSkipListMap<Integer, OrderGroup> selectedMap = type.equals("ask") ? this.askOrders : this.bidOrders;
 
+        // check if exists a group for the order price
         if (selectedMap.containsKey(price)) {
-            // if the price already exists, add the order to the OrderGroup
+            // group for the given price already exists -> add the order to the ìexisting group
             OrderGroup group = selectedMap.get(price);
 
             group.addOrder(order);
         } 
         else {
-            // if the price doesn't exist, create a new OrderGroup
+            // group for that price doesn't exist -> create a new group
             OrderGroup newGroup = new OrderGroup();
 
+            // add the order to the list of the new group
             newGroup.addOrder(order);
 
             selectedMap.put(price, newGroup);
         }
 
-        // update best prices + spread
+        // update best prices and spread
         updateBestPrices();
 
         // debug
         printOrderBook();
     }
 
-    // method to add a stop order
+    /**
+     * adds new stop order to the order book
+     * 
+     * @param username username of the user placing the stop order
+     * @param size size of the stop order
+     * @param price stop price of the stop order
+     * @param type type of the stop order ("ask" or "bid")
+     * @return unique order ID assigned to the stop order
+     */
     public synchronized int addStopOrder (String username, int size, int price, String type) {
-        // create new order id
-        int orderId = counterOrderId(); // generate unique order id
+        // generate unique new order id
+        int orderId = counterOrderId();
 
-        // create a new StopOrder object
+        // create a new stop order instance
         StopOrder order = new StopOrder(orderId, username, type, size, price);
 
-
+        // check if the stop order is immediately executable
         if ((type.equals("ask") && !this.bidOrders.isEmpty() && this.bestBidPrice <= price) || 
             (type.equals("bid") && !this.askOrders.isEmpty() && this.bestAskPrice >= price)) {
-            // stop order is immediately executable
             execStopOrder(size, price, type, "stop", username, orderId);
         }
+        // if not executable, add it to stop orders queue
         else {
-            // add the stop order to the stop orders queue
             ConcurrentLinkedQueue<StopOrder> selectedQueue = type.equals("ask") ? this.stopAsks : this.stopBids;
             selectedQueue.add(order);
         }
@@ -488,9 +593,24 @@ public class OrderBook {
         return orderId;
     }
 
+    /**
+     * executes a stop order
+     * if the stop price condition is met, the stop order is executed as a market order
+     * and then added to the trade map
+     * otherwise print an error message
+     * 
+     * @param size size of the stop order
+     * @param price stop price of the stop order
+     * @param type type of the stop order ("ask" or "bid")
+     * @param orderType type of the order ("stop" in this case)
+     * @param username username of the user placing the stop order
+     * @param orderId id of the stop order
+     */
     public synchronized void execStopOrder (int size, int price, String type, String orderType, String username, int orderId) {
+        // execute as market order
         int result = execMarketOrder (size, type, "stop", username, orderId);
 
+        // if successfully executed, add it to trade map
         if (result == orderId) {
             System.out.println("stop order " + orderId + " executed");
 
@@ -502,104 +622,124 @@ public class OrderBook {
     }
 
     // periodic check to match stop orders, executed when spread and best prices change
-    public synchronized void execStopOrders () {
-        // check stop asks with bid map
-        // bestAskPrice is the lowest ask price
-        // stopAsks active when bestBidPrice <= stopAskPrice
 
+    /**
+     * checks if any stop orders can be executed
+     * executes them as market orders if trigger condition is met
+     */
+    public synchronized void execStopOrders () {
+
+        // check stop asks with bid map
         Iterator<StopOrder> askIterator = this.stopAsks.iterator();
 
         while (askIterator.hasNext()) {
             StopOrder order = askIterator.next();
             int stopPrice = order.getStopPrice();
 
+            // check price condition
+            // best bid price is below or equal to stop price
             if (!this.bidOrders.isEmpty() && this.bestBidPrice <= stopPrice) {
-                // activate the stop order -> execute it as a market order
 
                 int result = execMarketOrder (order.getSize(), "ask", "stop", order.getUsername(), order.getOrderId());
 
+                // if successfully executed, add it to trade map
                 if (result == order.getOrderId()) {
-                    // order executed successfully
+
                     System.out.println("stop order " + order.getOrderId() + " executed");
 
-                    // when fully executed, add to trade map
                     insertTrade(order.getOrderId(), "ask", "stop", order.getSize(), order.getStopPrice(), LocalDate.now(), order.getUsername());
 
                     // remove stop order from the queue
                     askIterator.remove();
                 }
                 else {
-                    // order not executed
+                    // execution failed
                     System.out.println("error! stop order " + order.getOrderId() + " not executed");
 
+                    // remove the failed order from the queue
                     askIterator.remove();
                 }
             }
         }
 
         // check stop bids with ask map
-
         Iterator<StopOrder> bidIterator = this.stopBids.iterator();
 
         while (bidIterator.hasNext()) {
             StopOrder order = bidIterator.next();
             int stopPrice = order.getStopPrice();
 
+            // check price condition
+            // best ask price is above or equal to stop price
             if (!this.askOrders.isEmpty() && this.bestAskPrice >= stopPrice) {
 
                 int result = execMarketOrder (order.getSize(), "bid", "stop", order.getUsername(), order.getOrderId());
 
+                // if successfully executed, add it to trade map
                 if (result == order.getOrderId()) {
-                    // order executed successfully
+
                     System.out.println("stop order " + order.getOrderId() + " executed");
 
-                    // when fully executed, add to trade map
                     insertTrade(order.getOrderId(), "bid", "stop", order.getSize(), order.getStopPrice(), LocalDate.now(), order.getUsername());
 
-                    bidIterator.remove(); // remove stop order from the queue
+                    // remove stop order from the queue
+                    bidIterator.remove();
 
                 }
                 else {
-                    // order not executed
+                    // execution failed
                     System.out.println("error! stop order " + order.getOrderId() + " not executed");
 
-                    bidIterator.remove(); // remove stop order from the queue
+                    bidIterator.remove();
                 }
 
             }
         }
-
     }
 
+    /**
+     * executes a market order
+     * tries to match it with existing limit orders in the order book
+     * 
+     * @param size size of the market order
+     * @param type type of the market order ("ask" or "bid")
+     * @param orderType type of the order ("market" or "stop")
+     * @param username username of the user placing the market order
+     * @param id id of the order (used for stop orders)
+     * @return order ID if the market order is fully executed, -1 otherwise
+     */
     public synchronized int execMarketOrder (int size, String type, String orderType, String username, int id) {
 
         int orderId = 0;
         
+        // determine order id based on order type
+        // stop orders keep their original id
         if (orderType.equals("stop")) {
             orderId = id;
         }
+        // market orders get a new unique id
         else if (orderType.equals("market")) {
-            orderId = counterOrderId(); // generate unique order id
+            orderId = counterOrderId();
         }
 
+        // select the right map
         String oppositeType = type.equals("ask") ? "bid" : "ask";
-
         ConcurrentSkipListMap<Integer, OrderGroup> selectedMap = type.equals("ask") ? this.bidOrders : this.askOrders;
 
-        // check if the map is empty
+        // if the opposite type map is empty, market order fails immediately
         if (selectedMap.isEmpty()) {
-            // failed order
+            // execution failed
             return -1;
         }
 
-        // check if there's enough size to execute the order
+        // check if there's enough available size to execute the order
         if (this.getAvailableSize(username, oppositeType) >= size) {
-            // select the right map based on the order type
 
             int newSize = size;
 
             Iterator<Map.Entry<Integer, OrderGroup>> iterator = selectedMap.entrySet().iterator();
 
+            // iterate through the opposite type map until order is fully executed
             while (iterator.hasNext() && newSize > 0) {
                 Map.Entry<Integer, OrderGroup> entry = iterator.next();
 
@@ -609,18 +749,19 @@ public class OrderBook {
 
                 newSize = matchingAlgorithm(group, orders, newSize, username);
                 
+                // remove the group if it's empty
                 if (group.isEmpty()) {
-                    // remove the group if it's empty
                     iterator.remove();
                 }
             }
 
+            // update best prices and spread after execution
             updateBestPrices();
 
+            // add executed market order to trade map
             if (orderType.equals("market")) {
                 System.out.println("market order " + orderId + " fully executed");
 
-                // when fully executed, add to trade map
                 if (type.equals("ask"))
                     insertTrade(orderId, "ask", "market", size, 0, LocalDate.now(), username); 
                 else
@@ -637,17 +778,27 @@ public class OrderBook {
         return -1;
     }
 
-    // method for removing an order
+
+    /**
+     * cancels an existing order (limit or stop) from the order book
+     * searching for the given id within all order maps and queues
+     * 
+     * @param orderId id of the order to remove
+     * @param username username of the user trying to cancel the order
+     * @return 100 if the order was successfully removed, 101 otherwise
+     */
     public synchronized int cancelOrder (int orderId, String username) {
 
-        // check if the order is in the ask map
+        // check ask map
         Iterator<OrderGroup> askIterator = this.askOrders.values().iterator();
 
         while (askIterator.hasNext()) {
             OrderGroup group = askIterator.next();
 
+            // remove the order from the group
             if (group.removeOrder(orderId, username)) {
 
+                // if the group is empty after removal, remove it from the map
                 if (group.isEmpty()) {
                     askIterator.remove();
                 }
@@ -656,12 +807,12 @@ public class OrderBook {
 
                 System.out.println("ask order " + orderId + " removed");
 
-                // if the order has been removed successfully, return 100
+                // order successfully removed
                 return 100;
             }
         }
 
-        // check if the order is in the bid map
+        // check bid map
         Iterator<OrderGroup> bidIterator = this.bidOrders.values().iterator();
 
         while (bidIterator.hasNext()) {
@@ -681,25 +832,25 @@ public class OrderBook {
             }
         }
 
-        // check if the order is in the stop ask queue
+        // check stop ask queue
         Iterator<StopOrder> stopAskIterator = this.stopAsks.iterator();
         
         while (stopAskIterator.hasNext()) {
             StopOrder stopOrder = stopAskIterator.next();
 
             if (stopOrder.getOrderId() == orderId && stopOrder.getUsername().equals(username)) {
-                // remove the stop order
+                
                 stopAskIterator.remove();
 
                 updateBestPrices();
 
                 System.out.println("stop order " + orderId + " removed");
 
-                return 100; // success
+                return 100;
             }
         }
 
-        // check if the order is in the stop bid queue
+        // check stop bid queue
         Iterator<StopOrder> stopBidIterator = this.stopBids.iterator();
         while (stopBidIterator.hasNext()) {
             StopOrder stopOrder = stopBidIterator.next();
@@ -715,29 +866,48 @@ public class OrderBook {
             }
         }
 
-        // error -> order not found or not removed
+        // order not found or not removed
         return 101;
     }
 
+    /**
+     * inserts a trade into the trade map and notifies the user via UDP
+     * 
+     * @param tradeID
+     * @param type
+     * @param orderType
+     * @param size
+     * @param price
+     * @param date
+     * @param username
+     */
+    
     public synchronized void insertTrade (int tradeID, String type, String orderType, int size, int price, LocalDate date, String username) {
         Trade trade;
 
         if (price == 0)
+            // market trades with no price
             trade = new Trade(tradeID, type, orderType, size, username);
         else   
             trade = new Trade(tradeID, type, orderType, size, price, username);
 
+        // add trade to trade map
         this.tradeMap.addTrade(date, trade);
 
+        // create a temporary list for the trade for notification
         LinkedList<Trade> trades = new LinkedList<>();
         trades.add(trade);
 
-        // also add to the buffered trades
+        // store the trade to the buffered trades queue for perstistence
         this.bufferedTrades.add(trade);
 
+        // notify the user via UDP
         this.udpNotifier.notifyClient(username, new Notification(trades));
     }
 
+    /**
+     * prints the current state of the order book
+     */
     public synchronized void printOrderBook () {
         System.out.println("\n=======================================================");
         System.out.println("                     ORDER BOOK                        ");

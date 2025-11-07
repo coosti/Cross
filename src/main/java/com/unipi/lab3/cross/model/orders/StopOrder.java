@@ -1,5 +1,10 @@
 package com.unipi.lab3.cross.model.orders;
 
+/**
+ * class representing a stop order, extending the generic order class
+ * includes a stop price attribute
+ */
+
 public class StopOrder extends Order{
 
     private int stopPrice;

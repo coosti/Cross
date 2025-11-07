@@ -1,5 +1,10 @@
 package com.unipi.lab3.cross.model.orders;
 
+/**
+ * class representing a limit order, extending the generic order class
+ * includes a limit price attribute
+*/
+
 public class LimitOrder extends Order {
 
     private int limitPrice;

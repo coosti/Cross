@@ -9,14 +9,24 @@ import com.unipi.lab3.cross.model.orders.StopOrder;
 import com.unipi.lab3.cross.model.user.User;
 import com.unipi.lab3.cross.model.user.UserManager;
 
+/**
+ * class that manage inactive client connections
+ * periodically checks for inactive clients and logs them out after a configured timeout period
+ */
+
 public class InactivityHandler implements Runnable {
 
+    // map socket - related client handler for active clients
     private ConcurrentHashMap<Socket, ClientHandler> activeClients;
+
+    // useful shared references
     private OrderBook orderBook;
     private UserManager userManager;
 
+    // inactivity timeout in milliseconds
     private final long timeout;
 
+    // flag to control the running state of the handler
     private volatile boolean running = true;
 
     public InactivityHandler (ConcurrentHashMap<Socket, ClientHandler> activeClients, UserManager userManager, OrderBook orderBook, long timeout) {
@@ -27,14 +37,17 @@ public class InactivityHandler implements Runnable {
     }
 
     public void run () {
+        // main loop -> periodically scans active client to detect inactive ones
         while (running) {
             long now = System.currentTimeMillis();
 
             try {
+                // iterate over all active clients
                 for (ConcurrentHashMap.Entry<Socket, ClientHandler> entry : activeClients.entrySet()) {
                     Socket socket = entry.getKey();
                     ClientHandler handler = entry.getValue();
 
+                    // if client's last activity exceeds the timeout handle the client
                     if (now - handler.getLastActivityTime() > timeout) {
                         handleTimeout(socket, handler);
                     }
@@ -45,8 +58,10 @@ public class InactivityHandler implements Runnable {
             }
 
             try {
+                // pause between scans
                 Thread.sleep(5000);
             }
+            // thread interrupted
             catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 System.err.println("thread interrotto " + e.getMessage());
@@ -55,12 +70,20 @@ public class InactivityHandler implements Runnable {
         }
     }
 
+    /**
+     * handles an inactive client by logging them out and closing the connection
+     * 
+     * @param socket client's socket
+     * @param handler client's handler reference
+     */
     public synchronized void handleTimeout (Socket socket, ClientHandler handler) {
         try {
+            // log out user if logged in
             if (!handler.isLoggedIn()) {
                 System.out.println("not logged inactive client");
             }
             else {
+                // get username
                 String username = handler.getUsername();
 
                 // check if user has pending stop orders
@@ -69,6 +92,7 @@ public class InactivityHandler implements Runnable {
                     return;
                 }
                 else {
+                    // update user status to logged out in the user manager map
                     User user = userManager.getUser(username);
                     if (user != null) {
                         user.setLogged(false);
@@ -78,7 +102,9 @@ public class InactivityHandler implements Runnable {
                 }
             }
 
+            // close socket
             socket.close();
+            // remove client from active clients map
             activeClients.remove(socket);
             System.out.println("closed inactive connection");
         }
@@ -87,6 +113,12 @@ public class InactivityHandler implements Runnable {
         }
     }
 
+    /**
+     * checks if a user has pending stop orders in the order book
+     * 
+     * @param username the username of the user to check
+     * @return true if the user has pending stop orders, false otherwise
+     */
     public synchronized boolean hasStopOrders (String username) {
         ConcurrentLinkedQueue<StopOrder> userStopOrders = orderBook.getUserStopOrders(username);
         
@@ -96,6 +128,9 @@ public class InactivityHandler implements Runnable {
         return false;
     }
 
+    /**
+     * stops the inactivity handler setting the running flag to false
+     */
     public void stop () {
         running = false;
     }

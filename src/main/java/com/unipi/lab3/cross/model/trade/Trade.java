@@ -4,6 +4,11 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * class representing a trade, an executed order
+ * for every trade keeps orderID, type (buy/sell), orderType (limit/market), size, price, timestamp and username
+*/
+
 public class Trade {
     private int orderID;
     private String type;

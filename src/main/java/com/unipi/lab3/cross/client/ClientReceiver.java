@@ -13,17 +13,28 @@ import com.unipi.lab3.cross.json.response.*;
 import com.unipi.lab3.cross.model.OrderBook;
 import com.unipi.lab3.cross.model.trade.PriceHistory;
 
+/**
+ * class to handle incoming messages from the server on the TCP connection
+ * continuously reads from the input stream and processes server responses
+ * parsing json messages into the correct response objects and handling them
+*/
+
 public class ClientReceiver implements Runnable {
 
+    // input stream to read received messages from server
     private BufferedReader in;
 
+    // queue for user input to notify shutdown
     private LinkedBlockingQueue<String> userInput;
 
+    // running flag
     private volatile boolean running = false;
 
+    // flag for client state
     private final AtomicBoolean logged;
     private final AtomicBoolean registered;
 
+    // flag to indicate server closure
     private final AtomicBoolean serverClosed;
 
     public static final String SHUTDOWN_MESSAGE = "__SHUTDOWN__";
@@ -45,14 +56,18 @@ public class ClientReceiver implements Runnable {
         try {
             String responseMsg = null;
 
+            // continuously read messages from server
             while (running && !Thread.currentThread().isInterrupted()) {
 
                 try {
+                    // read a line from the input stream
                     responseMsg = in.readLine();
                 }
+                // normal timeout
                 catch (SocketTimeoutException e) {
                     continue;
                 }
+                // connection error -> notify shutdown and exit
                 catch (SocketException e) {
                     if (running) {
                         System.err.println("socket error: " + e.getMessage());
@@ -69,6 +84,7 @@ public class ClientReceiver implements Runnable {
                     }
                     break;
                 }
+                // general I/O error -> notify shutdown and exit
                 catch (IOException e) {
                     if (running) {
                         System.err.println("connection stopped: " + e.getMessage());
@@ -86,6 +102,7 @@ public class ClientReceiver implements Runnable {
                     break;
                 }
 
+                // server closed connection
                 if (responseMsg == null) {
                     //System.out.println("connection closed");
 
@@ -103,42 +120,41 @@ public class ClientReceiver implements Runnable {
                     break;
                 }
                 
+                // ignore empty messages
                 if (responseMsg.isBlank()) continue;
                 
+                // parse json message read
                 JsonObject obj = JsonParser.parseString(responseMsg).getAsJsonObject();
 
+                // determine response type based on json fields
+
+                // order response
                 if (obj.has("orderID")) {
-                    // order response
-
                     OrderResponse orderResponse = gson.fromJson(responseMsg, OrderResponse.class);
-
                     handleResponse(orderResponse);
                 }
+                // user response
                 else if (obj.has("operation") && obj.has("response") && obj.has("errorMessage")) {
-                    // user response
-
                     UserResponse userResponse = gson.fromJson(responseMsg, UserResponse.class);
-
                     handleResponse(userResponse);
                 }
+                // response to show order book
                 else if (obj.has("orderBook")) {
                     OrderBookResponse orderBookResponse = gson.fromJson(responseMsg, OrderBookResponse.class);
-
                     handleResponse(orderBookResponse);
                 }
+                // history trade response
                 else if (obj.has("date") && obj.has("stats")) {
-                    // history response
-
                     HistoryResponse historyResponse = gson.fromJson(responseMsg, HistoryResponse.class);
-
                     handleResponse(historyResponse);
                 }
+                // unknown response
                 else {
-                    // unknown response
                     System.out.println("unknown response from server" + responseMsg);
                 }
             }
         }
+        // ensure flags are reset on exit
         finally {
             running = false;
             logged.set(false);
@@ -147,11 +163,18 @@ public class ClientReceiver implements Runnable {
         }
     }
 
+    /**
+     * handles a response message from the server based on its type
+     * 
+     * @param responseMsg response message object received from server
+     */
     public void handleResponse (Response responseMsg) {
-
+        // handle order response
         if (responseMsg instanceof OrderResponse) {
+            // cast to order response
             OrderResponse orderResponse = (OrderResponse)responseMsg;
 
+            // get order id field value to print message to client
             if (orderResponse.getOrderID() != -1) {
                 System.out.println("order with ID: " + orderResponse.getOrderID());
             }
@@ -159,13 +182,18 @@ public class ClientReceiver implements Runnable {
                 System.out.println("order failed");
             }
         }
+        // handle user response
         else if (responseMsg instanceof UserResponse) {
+            // cast to user response
             UserResponse userResponse = (UserResponse)responseMsg;
 
+            // get operation field value to determine type of user operation (registration, login, logout, order book operations, etc.)
             String op = userResponse.getOperation();
 
             switch (op) {
+                // registration
                 case "register":
+                    // successful registration -> set registered flag
                     if (userResponse.getResponse() == 100) {
                         registered.set(true);
                         System.out.println("registration successful");
@@ -174,7 +202,7 @@ public class ClientReceiver implements Runnable {
                         System.out.println(userResponse.getErrorMessage());
                     }
                 break;
-
+                // update credentials
                 case "updateCredentials":
                     if (userResponse.getResponse() == 100) {
                         System.out.println("update successful");
@@ -183,8 +211,9 @@ public class ClientReceiver implements Runnable {
                         System.out.println(userResponse.getErrorMessage());
                     }
                 break;
-
+                // login
                 case "login":
+                    // successful login -> set logged flag
                     if (userResponse.getResponse() == 100) {
                         registered.set(true);
                         logged.set(true);
@@ -195,8 +224,9 @@ public class ClientReceiver implements Runnable {
                         System.out.println(userResponse.getErrorMessage());
                     }
                 break;
-
+                // logout
                 case "logout":
+                    // successful logout -> reset logged flag
                     if (userResponse.getResponse() == 100) {
                         logged.set(false);
                         System.out.println("logout successful");
@@ -206,7 +236,7 @@ public class ClientReceiver implements Runnable {
                     }
 
                 break;
-
+                // cancel order
                 case "cancelOrder":
                     if (userResponse.getResponse() == 100) {
                         System.out.println("order successfully deleted");
@@ -248,17 +278,21 @@ public class ClientReceiver implements Runnable {
                 break;
             }
         }
+        // handle order book response
         else if (responseMsg instanceof OrderBookResponse) {
             OrderBookResponse orderBookResponse = (OrderBookResponse) responseMsg;
+            // get order book object to print
             OrderBook ob = orderBookResponse.getOrderBook();
 
             ob.printOrderBook();
         }
+        // handle trades history response
         else if (responseMsg instanceof HistoryResponse) {
             HistoryResponse historyResponse = (HistoryResponse) responseMsg;
 
             System.out.println("Price history for " + historyResponse.getDate() + ":");
 
+            // get price history stats
             PriceHistory ph = new PriceHistory();
 
             ph.printPriceHistory(historyResponse.getStats());            
@@ -268,11 +302,17 @@ public class ClientReceiver implements Runnable {
         }
     }
 
+    /**
+     * stops the receiver thread
+     */
     public void stop() {
+        // set running flag to false
         running = false;
+        // set server closed flag to true
         serverClosed.set(true);
 
         try {
+            // close input stream
             in.close();
         }
         catch (Exception e) {}
