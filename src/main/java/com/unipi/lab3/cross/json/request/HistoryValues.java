@@ -1,33 +1,30 @@
 package com.unipi.lab3.cross.json.request;
 
 public class HistoryValues implements Values {
-    private int month;
-    private int year;
+    private String date;
 
-
-    public HistoryValues (int month, int year) {
-        this.month = month;
-        this.year = year;
+    public HistoryValues (String date) {
+        this.date = date;
     }
 
-    public int getMonth () {
-        return month;
+    public String getDate () {
+        return this.date;
     }
 
-    public int getYear () {
-        return year;
+    public int getMonth() {
+        return Integer.parseInt(date.substring(0, 2));
     }
 
-    public void setMonth (int month) {
-        this.month = month;
+    public int getYear() {
+        return Integer.parseInt(date.substring(2, 6));
     }
 
-    public void setYear (int year) {
-        this.year = year;
+    public void setDate (String date) {
+        this.date = date;
     }
 
     public String toString () {
-        return "{month: " + this.month + "}";
+        return "{month: " + this.date + "}";
     }
     
 }

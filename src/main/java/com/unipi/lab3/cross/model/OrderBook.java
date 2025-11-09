@@ -892,7 +892,7 @@ public class OrderBook {
             trade = new Trade(tradeID, type, orderType, size, price, username);
 
         // add trade to trade map
-        this.tradeMap.addTrade(date, trade);
+        this.tradeMap.addTrade(date.toString(), trade);
 
         // create a temporary list for the trade for notification
         LinkedList<Trade> trades = new LinkedList<>();

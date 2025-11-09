@@ -1,20 +1,18 @@
 package com.unipi.lab3.cross.model.trade;
 
-import java.time.LocalDate;
-
 /**
  * class that holds price stats for trades of a specific day,
  * as opening, closing, maximum, and minimum prices
 */
 
 public class DailyTradingStats {
-    private LocalDate date;
+    private String date; // in format yyyy-mm-dd
     private int openPrice;
     private int closePrice;
     private int maxPrice;
     private int minPrice;
 
-    public DailyTradingStats (LocalDate date, int openPrice, int closePrice, int maxPrice, int minPrice) {
+    public DailyTradingStats (String date, int openPrice, int closePrice, int maxPrice, int minPrice) {
         this.date = date;
         this.openPrice = openPrice;
         this.closePrice = closePrice;
@@ -22,7 +20,7 @@ public class DailyTradingStats {
         this.minPrice = minPrice;
     }
 
-    public LocalDate getDate () {
+    public String getDate () {
         return this.date;
     }
 

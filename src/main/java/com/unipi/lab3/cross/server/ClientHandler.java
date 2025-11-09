@@ -2,8 +2,8 @@ package com.unipi.lab3.cross.server;
 
 import java.io.*;
 import java.net.*;
+import java.util.*;
 import java.time.Year;
-import java.time.YearMonth;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -472,17 +472,30 @@ public class ClientHandler implements Runnable {
                     // parse month and year values
                     HistoryValues historyVal = gson.fromJson(obj.get("values"), HistoryValues.class);
 
-                    int months = historyVal.getMonth();
+                    String date = historyVal.getDate();
+
+                    // validate date format MMYYYY
+                    if (date.length() != 6)
+                        return new UserResponse("getPriceHistory", 103, "invalid date format");
+
+                    int month = historyVal.getMonth();
                     int year = historyVal.getYear();  
 
                     // check if month and year values are valid
-                    if (months < 1 || months > 12)
-                        return new UserResponse("getPriceHistory", 103, "invalid month");
+                    if (month < 1 || month > 12)
+                        return new UserResponse("getPriceHistory", 104, "invalid month");
                         
                     if (year < 1970 || year > Year.now().getValue())
-                        return new UserResponse("getPriceHistory", 104, "invalid year");
+                        return new UserResponse("getPriceHistory", 105, "invalid year");
 
-                    response = new HistoryResponse(YearMonth.of(year, months), priceHistory.getPriceHistory(YearMonth.of(year, months), tradeMap));
+                    // get price history for given month and year
+                    ArrayList<DailyTradingStats> result = priceHistory.getPriceHistory(month, year, tradeMap);
+
+                    if (result.isEmpty())
+                        return new UserResponse("getPriceHistory", 106, "no trading data available for given date");
+
+                    response = new HistoryResponse(date, result);
+                    
                 break;
                 
                 // unknown operation requested

@@ -70,25 +70,24 @@ public class ClientMain {
 
     private static void printWelcome() {
 
-        System.out.println(BANNER);
+    System.out.println(BANNER);
 
-        System.out.println("available commands:");
-        System.out.println("----------------------------------------");
-        System.out.printf("%-30s %s%n", "register(username,password)", "create your account");
-        System.out.printf("%-30s %s%n", "login(username,password)", "login to cross");
-        System.out.printf("%-30s %s%n", "updateCredentials(username,oldPassword,newPassword)", "update your credentials");
-        System.out.printf("%-30s %s%n", "logout()", "logout from cross");
-        System.out.printf("%-30s %s%n", "insertLimitOrder(type,size,price)", "insert an ask or bid limit order, with size and limit price");
-        System.out.printf("%-30s %s%n", "insertMarketOrder(type,size)", "insert a market order");
-        System.out.printf("%-30s %s%n", "insertStopOrder(type,size,price)", "insert an ask or bid stop order, with size and stop price");
-        System.out.printf("%-30s %s%n", "cancelOrder(orderID)", "cancel an order with given orderID");
-        System.out.printf("%-30s %s%n", "getOrderBook()", "show the order book");
-        System.out.printf("%-30s %s%n", "getPriceHistory(month,year)", "show history for given month and year");
-        System.out.printf("%-30s%n", "help()");
-        System.out.printf("%-30s%n", "exit()");
-        System.out.println("----------------------------------------\n");
-    }
-
+    System.out.println("Available Commands:");
+    System.out.println("================================================================================");
+    System.out.printf("  %-45s -> %s%n", "register(username,password)", "create your account");
+    System.out.printf("  %-45s -> %s%n", "login(username,password)", "login to cross");
+    System.out.printf("  %-45s -> %s%n", "updateCredentials(username,oldPassword,newPassword)", "update your credentials");
+    System.out.printf("  %-45s -> %s%n", "logout()", "logout from cross");
+    System.out.printf("  %-45s -> %s%n", "insertLimitOrder(type,size,price)", "insert an ask or bid limit order");
+    System.out.printf("  %-45s -> %s%n", "insertMarketOrder(type,size)", "insert a market order");
+    System.out.printf("  %-45s -> %s%n", "insertStopOrder(type,size,price)", "insert an ask or bid stop order");
+    System.out.printf("  %-45s -> %s%n", "cancelOrder(orderID)", "cancel an order");
+    System.out.printf("  %-45s -> %s%n", "getOrderBook()", "show the order book");
+    System.out.printf("  %-45s -> %s%n", "getPriceHistory(month,year)", "show history for given month/year");
+    System.out.printf("  %-45s -> %s%n", "help()", "show this help message");
+    System.out.printf("  %-45s -> %s%n", "exit()", "exit the application");
+    System.out.println("================================================================================\n");
+}
     public static void main (String[] args) throws Exception {
 
         printWelcome();

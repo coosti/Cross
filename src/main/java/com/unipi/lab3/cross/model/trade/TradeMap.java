@@ -1,7 +1,6 @@
 package com.unipi.lab3.cross.model.trade;
 
 import java.util.TreeMap;
-import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -11,19 +10,19 @@ import java.util.*;
 
 public class TradeMap {
     
-    // map date - list of trades on that date
+    // map date (as string, in format yyyy-mm-dd) - list of trades on that date
     // in each list, trades are ordered by insertion time (newest first)
-    private TreeMap<LocalDate, LinkedList<Trade>> dailyTrades;
+    private TreeMap<String, LinkedList<Trade>> dailyTrades;
 
     public TradeMap() {
         this.dailyTrades = new TreeMap<>();
     }
 
-    public TradeMap(TreeMap<LocalDate, LinkedList<Trade>> dailyTrades) {
+    public TradeMap(TreeMap<String, LinkedList<Trade>> dailyTrades) {
         this.dailyTrades = dailyTrades;
     }
 
-    public TreeMap<LocalDate, LinkedList<Trade>> getDailyTrades() {
+    public TreeMap<String, LinkedList<Trade>> getDailyTrades() {
         return this.dailyTrades;
     }
 
@@ -33,7 +32,7 @@ public class TradeMap {
      * @param date the date to get trades from
      * @return list of trades on that date
      */
-    public synchronized LinkedList<Trade> getTradesByDate(LocalDate date) {
+    public synchronized LinkedList<Trade> getTradesByDate(String date) {
         // check if date exists in map
         if (!this.dailyTrades.containsKey(date)) {
             // return empty list
@@ -52,7 +51,7 @@ public class TradeMap {
      */
     public synchronized Trade getTrade (int tradeId) {
         // iterate over all trades in the map
-        for (Map.Entry<LocalDate, LinkedList<Trade>> entry : this.dailyTrades.entrySet()) {
+        for (Map.Entry<String, LinkedList<Trade>> entry : this.dailyTrades.entrySet()) {
             // iterate over all trades in the entry
             for (Trade trade : entry.getValue()) {
                 // check if trade id matches
@@ -71,7 +70,7 @@ public class TradeMap {
      * @param date the date of the trade
      * @param trade the trade to add
      */
-    public synchronized void addTrade(LocalDate date, Trade trade) {
+    public synchronized void addTrade(String date, Trade trade) {
         // check if date exists in map
         if (!this.dailyTrades.containsKey(date)) {
             // create new list of trades for that date

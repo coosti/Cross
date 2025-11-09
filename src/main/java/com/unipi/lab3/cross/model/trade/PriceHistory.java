@@ -2,7 +2,6 @@ package com.unipi.lab3.cross.model.trade;
 
 import java.util.*;
 import java.time.LocalDate;
-import java.time.YearMonth;
 
 /**
  * class that calculates and displays daily price statistics for trades
@@ -18,24 +17,26 @@ public class PriceHistory {
      * builds the list of daily trading stast for all days
      * within the given month of the given year
      * 
-     * @param date year and month for which the price history is requested
+     * @param month month for which the price history is requested
+     * @param year year for which the price history is requested
      * @param map trade map containing all executed trades
      * @return list of daily trading stats for the given month
      */
-    public synchronized ArrayList<DailyTradingStats> getPriceHistory (YearMonth date, TradeMap map) {
+    public synchronized ArrayList<DailyTradingStats> getPriceHistory (int month, int year, TradeMap map) {
         // list to hold daily trading stats
         ArrayList<DailyTradingStats> history = new ArrayList<>();
 
         // iterate over each entry in the trade map
-        for (Map.Entry<LocalDate, LinkedList<Trade>> entry : map.getDailyTrades().entrySet()) {
+        for (Map.Entry<String, LinkedList<Trade>> entry : map.getDailyTrades().entrySet()) {
             // extract the trade date from the entry
-            LocalDate tradeDate = entry.getKey();
+            String strDate = entry.getKey();
+            LocalDate tradeDate = LocalDate.parse(strDate);
 
             // check if the trade date equals the specified month and year
-            if (YearMonth.from(tradeDate).equals(date)) {
+            if (tradeDate.getMonthValue() == month && tradeDate.getYear() == year) {
 
                 // calculate daily trading stats for that date
-                DailyTradingStats stats = this.calculateDailyTradingStats(tradeDate, map);
+                DailyTradingStats stats = this.calculateDailyTradingStats(strDate, map);
 
                 // add the calculated stats to the history list
                 history.add(stats);
@@ -53,7 +54,7 @@ public class PriceHistory {
      * @param map trade map containing all executed trades
      * @return daily trading stats for the given date
      */
-    public synchronized DailyTradingStats calculateDailyTradingStats (LocalDate date, TradeMap map) {
+    public synchronized DailyTradingStats calculateDailyTradingStats (String date, TradeMap map) {
         // get all trades for the specified date
         LinkedList<Trade> trades = map.getTradesByDate(date);
 
@@ -92,7 +93,7 @@ public class PriceHistory {
             if (stats.getOpenPrice() == 0 && stats.getClosePrice() == 0 && stats.getMaxPrice() == 0 && stats.getMinPrice() == 0)
                 continue;
             else
-                System.out.printf("%-12s %-12.2f %-12.2f %-12.2f %-12.2f%n", stats.getDate().toString(), stats.getOpenPrice()/1000, stats.getClosePrice()/1000, stats.getMaxPrice()/1000, stats.getMinPrice()/1000);
+                System.out.printf("%-12s %-12d %-12d %-12d %-12d%n", stats.getDate(), stats.getOpenPrice(), stats.getClosePrice(), stats.getMaxPrice(), stats.getMinPrice());
         }
     } 
 }

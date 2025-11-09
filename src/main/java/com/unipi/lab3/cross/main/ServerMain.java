@@ -259,7 +259,8 @@ public class ServerMain {
                 for (Trade trade : trades) {
                     // convert trade timestamp to local date
                     LocalDate date = Instant.ofEpochSecond(trade.getTimestamp()).atZone(ZoneId.systemDefault()).toLocalDate();
-                    tradeMap.addTrade(date, trade);
+                    String dateStr = date.toString();
+                    tradeMap.addTrade(dateStr, trade);
                 }
             }
             else

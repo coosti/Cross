@@ -494,13 +494,21 @@ public class ClientSender implements Runnable {
                 int year = Integer.parseInt(paramList.get(1));
 
                 // check if month is between 1 and 12 and year is valid
-                if (month < 1 || month > 12 || year < 2000) {
-                    System.out.println("invalid year and month parameters");
+                if (month < 1 || month > 12) {
+                    System.out.println("invalid month parameters");
+                    break;
+                }
+                
+                if (year < 2000) {
+                    System.out.println("invalid year parameter");
                     break;
                 }
 
+                // build date string in format MMYYYY
+                String date = String.format("%02d%04d", month, year);
+
                 // build history values object
-                HistoryValues stats = new HistoryValues(month, year);
+                HistoryValues stats = new HistoryValues(date);
 
                 request = new Request<HistoryValues>("getPriceHistory", stats);
 
