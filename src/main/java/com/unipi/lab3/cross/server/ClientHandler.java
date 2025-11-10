@@ -182,7 +182,7 @@ public class ClientHandler implements Runnable {
                         msg = "OK";
 
                         // set the user for this client handler
-                        this.user = userManager.getUser(userVal.getUsername());
+                        //this.user = userManager.getUser(userVal.getUsername());
 
                         System.out.println("user " + userVal.getUsername() + " registered");
                     }
@@ -220,9 +220,6 @@ public class ClientHandler implements Runnable {
                     // successful update
                     if (code == 100) {
                         msg = "OK";
-
-                        if (this.user == null)
-                            this.user = userManager.getUser(userVal.getUsername());
 
                         System.out.println("user " + userVal.getUsername() + " updated credentials");
                     }
@@ -268,17 +265,10 @@ public class ClientHandler implements Runnable {
                         udpPort = userVal.getNetworkValues().getPort();
                         udpNotifier.registerClient(userVal.getUsername(), clientSocket.getInetAddress(), udpPort);
 
-                        // update local user instance
-                        if (this.user == null) {
-                            // if user instance not set, get it from user manager
-                            this.user = userManager.getUser(userVal.getUsername());
-                            // set user as logged in
-                            this.user.setLogged(true);
-                        }
-                        else {
-                            // just set user as logged in
-                            this.user.setLogged(true);
-                        }
+                        // set the user for this client handler at login
+                        this.user = userManager.getUser(userVal.getUsername());
+                        // set user as logged in
+                        this.user.setLogged(true);
 
                         updateLastActivityTime();
 
@@ -380,7 +370,7 @@ public class ClientHandler implements Runnable {
 
                     // market order execution failed
                     if (code == -1) {
-                        System.out.println("market order inserted by user " + this.user.getUsername() + "cannot be executed");
+                        System.out.println("market order inserted by user " + this.user.getUsername() + " cannot be executed");
                     }
 
                     response = new OrderResponse(code);

@@ -247,13 +247,8 @@ public class ClientSender implements Runnable {
             
             // update user credentials
             case "updateCredentials":
-                // check if registered
-                if (!registered.get()) {
-                    System.out.println("you have to register first");
-                    break;
-                }
                 // check if logged in -> cannot change credentials while logged in
-                else if (logged.get()) {
+                if (logged.get()) {
                     System.out.println("you can't change credentials while logged in");
                     break;
                 }
@@ -275,11 +270,7 @@ public class ClientSender implements Runnable {
             break;
 
             case "logout":
-                if (!registered.get()) {
-                    System.out.println("you have to sign in first");
-                    break;
-                }
-                else if (!logged.get()) {
+                if (!logged.get()) {
                     System.out.println("you are not logged in");
                     break;
                 }

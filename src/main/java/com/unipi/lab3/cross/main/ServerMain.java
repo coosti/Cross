@@ -66,6 +66,9 @@ public class ServerMain {
     // inactivity timeout for users in seconds
     public static int inactivityTimeout;
 
+    // scan interval for inactivity handler in seconds
+    public static int scanInterval;
+
     // persistence handler
     public static ScheduledExecutorService scheduler;
     public static PersistenceHandler persistenceHandler;
@@ -142,7 +145,7 @@ public class ServerMain {
             }, 1, 1, java.util.concurrent.TimeUnit.MINUTES);
 
             // inactivity handler thread
-            inactivityHandler = new InactivityHandler(activeClients, userManager, orderBook, inactivityTimeout);
+            inactivityHandler = new InactivityHandler(activeClients, userManager, orderBook, inactivityTimeout, scanInterval);
             inactivityThread = new Thread(inactivityHandler);
             inactivityThread.start();
 
@@ -465,6 +468,7 @@ public class ServerMain {
         tcpPort = Integer.parseInt(props.getProperty("tcpPort"));
         udpPort = Integer.parseInt(props.getProperty("udpPort"));
         inactivityTimeout = Integer.parseInt(props.getProperty("timeout"));
+        scanInterval = Integer.parseInt(props.getProperty("interval"));
         // other properties ...
 
         inputFile.close();

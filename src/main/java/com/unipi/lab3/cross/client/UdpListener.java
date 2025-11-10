@@ -78,7 +78,10 @@ public class UdpListener implements Runnable {
 
                     // print details of each trade in the notification
                     for (Trade trade : notification.getTrades()) {
-                        System.out.println(trade.getOrderType() + " " + trade.getType() + " order " + trade.getOrderId() + " of " + trade.getSize() + " BTC at " + trade.getPrice() + " USD has been executed at " + formatDate(trade.getTimestamp()));
+                        if (notification.getNotification().equals("orderFailed"))
+                            System.out.println("error! " + trade.getOrderType() + " " + trade.getType() + " order " + trade.getOrderId() + " of " + trade.getSize() + " BTC at " + trade.getPrice() + " USD could not be executed");
+                        else
+                            System.out.println(trade.getOrderType() + " " + trade.getType() + " order " + trade.getOrderId() + " of " + trade.getSize() + " BTC at " + trade.getPrice() + " USD has been executed at " + formatDate(trade.getTimestamp()));
                     }
                 }
                 // timeout error

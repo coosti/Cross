@@ -158,7 +158,6 @@ public class ClientReceiver implements Runnable {
         finally {
             running = false;
             logged.set(false);
-            registered.set(false);
             serverClosed.set(true);
         }
     }
@@ -290,7 +289,7 @@ public class ClientReceiver implements Runnable {
         else if (responseMsg instanceof HistoryResponse) {
             HistoryResponse historyResponse = (HistoryResponse) responseMsg;
 
-            System.out.println("Price history for " + historyResponse.getDate() + ":");
+            System.out.println("Price history for " + historyResponse.getMonth() + " " + historyResponse.getYear() + ":");
 
             // get price history stats
             PriceHistory ph = new PriceHistory();

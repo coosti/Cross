@@ -5,7 +5,7 @@ import java.util.*;
 
 /**
  * class representing a map of trades organized by date
- * keeps trades in a tree map with local date as key and a linked list of trades as value
+ * keeps trades in a tree map with date as key and a linked list of trades as value
 */
 
 public class TradeMap {

@@ -5,12 +5,12 @@ import java.util.*;
 import com.unipi.lab3.cross.model.trade.Trade;
 
 public class Notification {
-    private static final String NOTIFICATION_TYPE = "closedTrades";
 
-    private final String notification = NOTIFICATION_TYPE;
+    private final String notification;
     private final LinkedList<Trade> trades;
 
-    public Notification (LinkedList<Trade> trades) {
+    public Notification (String notification, LinkedList<Trade> trades) {
+        this.notification = notification;
         this.trades = new LinkedList<>(trades);
     }
 

@@ -26,14 +26,18 @@ public class InactivityHandler implements Runnable {
     // inactivity timeout in milliseconds
     private final long timeout;
 
+    // scan interval in milliseconds
+    private final long scanInterval;
+
     // flag to control the running state of the handler
     private volatile boolean running = true;
 
-    public InactivityHandler (ConcurrentHashMap<Socket, ClientHandler> activeClients, UserManager userManager, OrderBook orderBook, long timeout) {
+    public InactivityHandler (ConcurrentHashMap<Socket, ClientHandler> activeClients, UserManager userManager, OrderBook orderBook, long timeout, long scanInterval) {
         this.activeClients = activeClients;
         this.userManager = userManager;
         this.orderBook = orderBook;
         this.timeout = timeout;
+        this.scanInterval = scanInterval;
     }
 
     public void run () {
@@ -59,7 +63,7 @@ public class InactivityHandler implements Runnable {
 
             try {
                 // pause between scans
-                Thread.sleep(5000);
+                Thread.sleep(scanInterval);
             }
             // thread interrupted
             catch (InterruptedException e) {

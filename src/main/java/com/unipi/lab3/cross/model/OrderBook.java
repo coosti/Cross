@@ -53,6 +53,9 @@ public class OrderBook {
     // flag to avoid recursive calls when updating best prices
     private transient boolean update = false;
 
+    private transient final String NOTIFICATION_SUCCESS = "closedTrades";
+    private transient final String NOTIFICATION_ERROR = "orderFailed";
+
     // constructors
 
     public OrderBook () {
@@ -656,6 +659,11 @@ public class OrderBook {
                     // execution failed
                     System.out.println("error! stop order " + order.getOrderId() + " not executed");
 
+                    LinkedList<Trade> failedOrders = new LinkedList<>();
+                    failedOrders.add(new Trade(order.getOrderId(), order.getType(), "stop", order.getSize(), order.getStopPrice(), order.getUsername()));
+
+                    this.udpNotifier.notifyClient(order.getUsername(), new Notification(NOTIFICATION_ERROR, failedOrders));
+
                     // remove the failed order from the queue
                     askIterator.remove();
                 }
@@ -689,6 +697,11 @@ public class OrderBook {
                 else {
                     // execution failed
                     System.out.println("error! stop order " + order.getOrderId() + " not executed");
+                    
+                    LinkedList<Trade> failedOrders = new LinkedList<>();
+                    failedOrders.add(new Trade(order.getOrderId(), order.getType(), "stop", order.getSize(), order.getStopPrice(), order.getUsername()));
+
+                    this.udpNotifier.notifyClient(order.getUsername(), new Notification(NOTIFICATION_ERROR, failedOrders));
 
                     bidIterator.remove();
                 }
@@ -899,10 +912,10 @@ public class OrderBook {
         trades.add(trade);
 
         // store the trade to the buffered trades queue for perstistence
-        this.bufferedTrades.add(trade);
+        this.bufferedTrades.add(trade);        
 
         // notify the user via UDP
-        this.udpNotifier.notifyClient(username, new Notification(trades));
+        this.udpNotifier.notifyClient(username, new Notification(NOTIFICATION_SUCCESS, trades));
     }
 
     /**
