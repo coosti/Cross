@@ -39,31 +39,31 @@ The project is developed in **Java 17** and uses **Maven** for build automation 
 ### Build 
 From the project root directory, run:
 
-mvn clean package
+`mvn clean package`
 
 To generate the executable JAR files inside target directory, run:
 
-mvn package
+`mvn package`
 
 ### Compile
 To compile the project run:
 
-mvn clean compile
+`mvn clean compile`
 
 ### Server
 To exec server main class with JAR file:
 
-java -jar target/cross-server.jar
+`java -jar target/cross-server.jar`
 
 Alternatively, using maven profile:
 
-mvn exec:java -Pserver
+`mvn exec:java -Pserver`
 
 ### Client
 To exec server main class with JAR file:
 
-java -jar target/cross-client.jar
+`java -jar target/cross-client.jar`
 
 Alternatively, using maven profile:
 
-mvn exec:java -Pclient
+`mvn exec:java -Pclient`
