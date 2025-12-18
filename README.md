@@ -3,12 +3,12 @@
 ## Project description
 
 CROSS is a Java-based Order Book service simulator developed to model the behaviour of a centralized cryptocurrency exchange.
-The project has been realized ad final assignment for the Laboratory III module of the Networks course for the academic year 2024/25 and implements a
-multithreaded client–server architecture with hybrid TCP/UDP communication
+The project has been realized as final assignment for the Laboratory III module of the Networks course for the academic year 2024/25 and implements a
+multithreaded client–server architecture with hybrid TCP/UDP communication.
 
 ## Features
 
-CROSS provides a full system to managing buy and sell orders on a simulated market (BTC/USD) through:
+CROSS provides a full system to manage buy and sell orders on a simulated market (BTC/USD) through:
 
 - order insertion, cancellation, and execution
 - order matching based on price-time priority principle
