@@ -404,7 +404,7 @@ public class OrderBook {
             ConcurrentLinkedQueue<LimitOrder> askLimitOrders = askGroup.getLimitOrders();
 
             // check price condition
-            // matching occurs when a bid price is greater than or equal to the ask price
+            // matching occurs when an ask price is lower than or equal to the ask price
             if (askPrice <= price) {
                 
                 newSize = matchingAlgorithm(askGroup, askLimitOrders, newSize, username);

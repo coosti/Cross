@@ -1,18 +1,69 @@
-## Getting Started
+# CROSS – an exChange oRder bOokS Service
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+## Project description
 
-## Folder Structure
+CROSS is a Java-based Order Book service simulator developed to model the behaviour of a centralized cryptocurrency exchange.
+The project has been realized ad final assignment for the Laboratory III module of the Networks course for the academic year 2024/25 and implements a
+multithreaded client–server architecture with hybrid TCP/UDP communication
 
-The workspace contains two folders by default, where:
+## Features
 
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
+CROSS provides a full system to managing buy and sell orders on a simulated market (BTC/USD) through:
 
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
+- order insertion, cancellation, and execution
+- order matching based on price-time priority principle
+- TCP request/response communication between system and users
+- asynchronous UDP notifications for executed orders
+- user management (registration, login, logout)
+- automatic data persistence using JSON files
+- consultation of price history and daily trading statistics
 
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
+## Project Structure and Design
 
-## Dependency Management
+CROSS follows a modular client–server design to separate responsibilities:
 
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+- **Server side**: manages client connections, order processing, user sessions, persistence, client/server communication via TCP and asynchronous UDP notifications.
+- **Client side**: handles user input, request/response communication with TCP and UDP notification management.
+- **Model layer**: contains the core business logic, with Order Book, trade management, and price history computation.
+
+The system operates in a concurrent environment, handling multiple clients simultaneously with dedicated threads, thread-safe data structures and synchronization mechanisms.
+
+## Compilation and execution
+
+The project is developed in **Java 17** and uses **Maven** for build automation and dependency management.
+
+### Requirements
+- Java 17 or higher
+- Maven
+
+### Build 
+From the project root directory, run:
+
+mvn clean package
+
+To generate the executable JAR files inside target directory, run:
+
+mvn package
+
+### Compile
+To compile the project run:
+
+mvn clean compile
+
+### Server
+To exec server main class with JAR file:
+
+java -jar target/cross-server.jar
+
+Alternatively, using maven profile:
+
+mvn exec:java -Pserver
+
+### Client
+To exec server main class with JAR file:
+
+java -jar target/cross-client.jar
+
+Alternatively, using maven profile:
+
+mvn exec:java -Pclient
